@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Kiki's PlayPlace</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: monospace;
+    }
+    #screen {
+      border: 1px solid #444;
+      padding: 16px;
+      margin-top: 20px;
+      max-width: 600px;
+      min-height: 150px;
+    }
+    button {
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kiki's PlayPlace – Memory Terminal</h1>
+  <button onclick="triggerMemory()">Walk forward</button>
+  <div id="screen"></div>
+
+  <script>
+    const memories = [
+      "Kiki: “Hey! You’re not supposed to be here yet…”",
+      "Genevieve: “Waddle-waddle… oh dear, I think something’s wrong.”",
+      "Kiki: “Don’t touch that. Seriously. Don’t.”",
+      "Genevieve: “If the lights flicker, pretend you didn’t see it.”"
+    ];
+
+    function triggerMemory() {
+      const screen = document.getElementById("screen");
+      const line = memories[Math.floor(Math.random() * memories.length)];
+      const p = document.createElement("p");
+      p.textContent = line;
+      screen.appendChild(p);
+    }
+  </script>
+</body>
+</html>
