@@ -5,49 +5,97 @@
   <title>Kiki's PlayPlace</title>
   <style>
     body {
-      background: #000;
-      color: #fff;
-      font-family: monospace;
+      margin: 0;
+      background: #111;
+      overflow: hidden;
     }
-    #screen {
-      border: 1px solid #444;
-      padding: 16px;
-      margin-top: 20px;
-      max-width: 600px;
-      min-height: 150px;
-    }
-    button {
+
+    #game {
+      width: 800px;
+      height: 600px;
       background: #222;
-      color: #fff;
-      border: 1px solid #555;
-      padding: 8px 16px;
-      cursor: pointer;
+      margin: 0 auto;
+      position: relative;
+      border: 3px solid #444;
     }
-    button:hover {
-      background: #333;
+
+    .player {
+      width: 40px;
+      height: 40px;
+      background: #ff66cc; /* Kiki colour */
+      position: absolute;
+      top: 280px;
+      left: 380px;
+    }
+
+    .npc {
+      width: 40px;
+      height: 40px;
+      background: #66ccff; /* Genevieve colour */
+      position: absolute;
+      top: 150px;
+      left: 150px;
+    }
+
+    #dialogue {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-family: monospace;
+      padding: 10px;
+      height: 80px;
     }
   </style>
 </head>
 <body>
-  <h1>Kiki's PlayPlace – Memory Terminal</h1>
-  <button onclick="triggerMemory()">Walk forward</button>
-  <div id="screen"></div>
 
-  <script>
-    const memories = [
-      "Kiki: “Hey! You’re not supposed to be here yet…”",
-      "Genevieve: “Waddle-waddle… oh dear, I think something’s wrong.”",
-      "Kiki: “Don’t touch that. Seriously. Don’t.”",
-      "Genevieve: “If the lights flicker, pretend you didn’t see it.”"
-    ];
+<div id="game">
+  <div class="player" id="player"></div>
+  <div class="npc" id="npc"></div>
+  <div id="dialogue">Use arrow keys to move.</div>
+</div>
 
-    function triggerMemory() {
-      const screen = document.getElementById("screen");
-      const line = memories[Math.floor(Math.random() * memories.length)];
-      const p = document.createElement("p");
-      p.textContent = line;
-      screen.appendChild(p);
+<script>
+  const player = document.getElementById("player");
+  const npc = document.getElementById("npc");
+  const dialogue = document.getElementById("dialogue");
+
+  let x = 380;
+  let y = 280;
+
+  const lines = [
+    "Kiki: “Hey! You’re not supposed to be here yet…”",
+    "Genevieve: “Waddle-waddle… oh dear, I think something’s wrong.”",
+    "Kiki: “Don’t touch that. Seriously. Don’t.”",
+    "Genevieve: “If the lights flicker, pretend you didn’t see it.”"
+  ];
+
+  function talk() {
+    dialogue.textContent = lines[Math.floor(Math.random() * lines.length)];
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp") y -= 10;
+    if (e.key === "ArrowDown") y += 10;
+    if (e.key === "ArrowLeft") x -= 10;
+    if (e.key === "ArrowRight") x += 10;
+
+    player.style.left = x + "px";
+    player.style.top = y + "px";
+
+    // Interaction zone
+    const px = x;
+    const py = y;
+    const nx = 150;
+    const ny = 150;
+
+    if (Math.abs(px - nx) < 50 && Math.abs(py - ny) < 50) {
+      talk();
     }
-  </script>
+  });
+</script>
+
 </body>
 </html>
