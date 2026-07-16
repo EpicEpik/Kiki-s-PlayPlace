@@ -16,14 +16,15 @@
   </style>
 </head>
 <body>
-<div id="dialogue">Use WASD to move. Look at Kiki or Genevieve.</div>
+<div id="dialogue">Use WASD to move. Look at Kiki or Vivi.</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
 <script>
-  // Basic Three.js setup
+  // Scene setup
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111111);
+  scene.background = new THREE.Color(0x050505);
+  scene.fog = new THREE.Fog(0x110000, 5, 50);
 
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -31,31 +32,48 @@
     0.1,
     1000
   );
+  camera.position.set(0, 1.5, 0);
+
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  const light = new THREE.AmbientLight(0xffffff, 1);
-  scene.add(light);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+  scene.add(ambient);
 
-  // KIKI (frog animatronic with Mexican hat + taco)
+  // Horror red light
+  const horrorLight = new THREE.PointLight(0xff0000, 2, 20);
+  horrorLight.position.set(0, 5, -15);
+  scene.add(horrorLight);
+
+  setInterval(() => {
+    horrorLight.intensity = 0.5 + Math.random() * 2.5;
+  }, 80);
+
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(100, 100);
+  const floorMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+
+  // KIKI (frog animatronic)
   function createKiki() {
     const group = new THREE.Group();
 
-    // Body
-    const bodyGeo = new THREE.BoxGeometry(2, 3, 1);
-    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x55ff55 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 3, 1),
+      new THREE.MeshBasicMaterial({ color: 0x55ff55 })
+    );
     group.add(body);
 
-    // Head
-    const headGeo = new THREE.SphereGeometry(1.2, 32, 32);
-    const headMat = new THREE.MeshBasicMaterial({ color: 0x55ff55 });
-    const head = new THREE.Mesh(headGeo, headMat);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0x55ff55 })
+    );
     head.position.y = 2.5;
     group.add(head);
 
-    // Eyes
     const eyeGeo = new THREE.SphereGeometry(0.25, 16, 16);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -65,23 +83,24 @@
     group.add(leftEye);
     group.add(rightEye);
 
-    // Mexican hat
-    const hatBrimGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32);
-    const hatTopGeo = new THREE.ConeGeometry(1, 1, 32);
-    const hatMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
-
-    const brim = new THREE.Mesh(hatBrimGeo, hatMat);
+    const brim = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
     brim.position.y = 3.7;
     group.add(brim);
 
-    const hatTop = new THREE.Mesh(hatTopGeo, hatMat);
+    const hatTop = new THREE.Mesh(
+      new THREE.ConeGeometry(1, 1, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
     hatTop.position.y = 4.2;
     group.add(hatTop);
 
-    // Smiley taco
-    const tacoGeo = new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI);
-    const tacoMat = new THREE.MeshBasicMaterial({ color: 0xffaa33 });
-    const taco = new THREE.Mesh(tacoGeo, tacoMat);
+    const taco = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI),
+      new THREE.MeshBasicMaterial({ color: 0xffaa33 })
+    );
     taco.position.set(0, 1, 1.2);
     group.add(taco);
 
@@ -89,31 +108,30 @@
     return group;
   }
 
-  // GENEVIEVE (penguin animatronic)
-  function createGenevieve() {
+  // VIVI (Genevieve the penguin)
+  function createVivi() {
     const group = new THREE.Group();
 
-    // Body
-    const bodyGeo = new THREE.SphereGeometry(1.5, 32, 32);
-    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    const body = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
     group.add(body);
 
-    // Belly
-    const bellyGeo = new THREE.SphereGeometry(1.2, 32, 32);
-    const bellyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const belly = new THREE.Mesh(bellyGeo, bellyMat);
+    const belly = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
     belly.position.z = 0.5;
     group.add(belly);
 
-    // Head
-    const headGeo = new THREE.SphereGeometry(1, 32, 32);
-    const headMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const head = new THREE.Mesh(headGeo, headMat);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    );
     head.position.y = 2;
     group.add(head);
 
-    // Eyes
     const eyeGeo = new THREE.SphereGeometry(0.2, 16, 16);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -123,14 +141,13 @@
     group.add(leftEye);
     group.add(rightEye);
 
-    // Beak
-    const beakGeo = new THREE.ConeGeometry(0.4, 0.8, 32);
-    const beakMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    const beak = new THREE.Mesh(beakGeo, beakMat);
+    const beak = new THREE.Mesh(
+      new THREE.ConeGeometry(0.4, 0.8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+    );
     beak.position.set(0, 2.1, 1);
     group.add(beak);
 
-    // Feet
     const footGeo = new THREE.BoxGeometry(0.6, 0.2, 1);
     const footMat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
     const leftFoot = new THREE.Mesh(footGeo, footMat);
@@ -145,25 +162,30 @@
   }
 
   const kiki = createKiki();
-  const genevieve = createGenevieve();
+  const vivi = createVivi();
   scene.add(kiki);
-  scene.add(genevieve);
+  scene.add(vivi);
+
+  // Ominous tunnel
+  const tunnelGeo = new THREE.BoxGeometry(20, 5, 60);
+  const tunnelMat = new THREE.MeshBasicMaterial({ color: 0x220000 });
+  const tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
+  tunnel.position.set(0, 0, -40);
+  scene.add(tunnel);
 
   const dialogueBox = document.getElementById('dialogue');
 
   const kikiLines = [
-    "Kiki: “Ribbit-ribbit… my taco is smiling at you.”",
-    "Kiki: “You’re not supposed to be in the PlayPlace after closing…”",
-    "Kiki: “If the music stops, don’t turn around.”"
+    "Kiki: “Ribbit… my taco is still smiling at you.”",
+    "Kiki: “Don’t stay in the tunnels too long…”",
+    "Kiki: “Vivi says the lights flicker for a reason.”"
   ];
 
-  const genLines = [
+  const viviLines = [
     "Genevieve: “Waddle-waddle… something’s wrong in the tunnels.”",
-    "Genevieve: “If the lights flicker, pretend you didn’t see it.”",
-    "Genevieve: “I think Kiki’s smile is stuck again…”"
+    "Genevieve: “Sweetheart… don’t turn around if you hear giggling.”",
+    "Genevieve: “Only Kiki calls me Vivi.”"
   ];
-
-  camera.position.z = 0;
 
   let x = 0, z = 0;
 
@@ -180,22 +202,47 @@
     camera.getWorldDirection(dir);
 
     const raycaster = new THREE.Raycaster(camera.position, dir);
-    const intersects = raycaster.intersectObjects([kiki, genevieve]);
+    const intersects = raycaster.intersectObjects([kiki, vivi], true);
 
     if (intersects.length > 0) {
-      const obj = intersects[0].object;
-      if (obj.parent === kiki) {
+      const obj = intersects[0].object.parent;
+      if (obj === kiki) {
         dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
-      } else if (obj.parent === genevieve) {
-        dialogueBox.textContent = genLines[Math.floor(Math.random() * genLines.length)];
+      } else if (obj === vivi) {
+        dialogueBox.textContent = viviLines[Math.floor(Math.random() * viviLines.length)];
       }
     } else {
       dialogueBox.textContent = "Use WASD to move. Look at Kiki or Genevieve.";
     }
   });
 
+  // Corrupt material helper
+  function corruptMaterial(color) {
+    return new THREE.MeshBasicMaterial({
+      color,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.6
+    });
+  }
+
+  // Corrupt Kiki slightly
+  kiki.children.forEach(part => {
+    part.material = corruptMaterial(0x880000);
+  });
+
+  // Mascot stare behavior
+  function makeStare(target, speed = 0.02) {
+    target.lookAt(camera.position);
+    target.rotation.y += speed;
+  }
+
   function animate() {
     requestAnimationFrame(animate);
+
+    makeStare(kiki);
+    makeStare(vivi);
+
     renderer.render(scene, camera);
   }
   animate();
