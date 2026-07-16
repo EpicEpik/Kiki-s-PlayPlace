@@ -23,34 +23,131 @@
 <script>
   // Basic Three.js setup
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  scene.background = new THREE.Color(0x111111);
+
+  const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Light
   const light = new THREE.AmbientLight(0xffffff, 1);
   scene.add(light);
 
-  // Kiki & Genevieve textures (you must add these files)
-  const loader = new THREE.TextureLoader();
-  const kikiTexture = loader.load('kiki.png');
-  const genevieveTexture = loader.load('genevieve.png');
+  // KIKI (frog animatronic with Mexican hat + taco)
+  function createKiki() {
+    const group = new THREE.Group();
 
-  const materialKiki = new THREE.MeshBasicMaterial({ map: kikiTexture, transparent: true });
-  const materialGen = new THREE.MeshBasicMaterial({ map: genevieveTexture, transparent: true });
+    // Body
+    const bodyGeo = new THREE.BoxGeometry(2, 3, 1);
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x55ff55 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    group.add(body);
 
-  const geometry = new THREE.PlaneGeometry(2, 3);
+    // Head
+    const headGeo = new THREE.SphereGeometry(1.2, 32, 32);
+    const headMat = new THREE.MeshBasicMaterial({ color: 0x55ff55 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 2.5;
+    group.add(head);
 
-  const kiki = new THREE.Mesh(geometry, materialKiki);
-  kiki.position.set(-2, 0, -5);
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.25, 16, 16);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.5, 3.2, 0.8);
+    rightEye.position.set(0.5, 3.2, 0.8);
+    group.add(leftEye);
+    group.add(rightEye);
+
+    // Mexican hat
+    const hatBrimGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32);
+    const hatTopGeo = new THREE.ConeGeometry(1, 1, 32);
+    const hatMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+
+    const brim = new THREE.Mesh(hatBrimGeo, hatMat);
+    brim.position.y = 3.7;
+    group.add(brim);
+
+    const hatTop = new THREE.Mesh(hatTopGeo, hatMat);
+    hatTop.position.y = 4.2;
+    group.add(hatTop);
+
+    // Smiley taco
+    const tacoGeo = new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI);
+    const tacoMat = new THREE.MeshBasicMaterial({ color: 0xffaa33 });
+    const taco = new THREE.Mesh(tacoGeo, tacoMat);
+    taco.position.set(0, 1, 1.2);
+    group.add(taco);
+
+    group.position.set(-3, 0, -10);
+    return group;
+  }
+
+  // GENEVIEVE (penguin animatronic)
+  function createGenevieve() {
+    const group = new THREE.Group();
+
+    // Body
+    const bodyGeo = new THREE.SphereGeometry(1.5, 32, 32);
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    group.add(body);
+
+    // Belly
+    const bellyGeo = new THREE.SphereGeometry(1.2, 32, 32);
+    const bellyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const belly = new THREE.Mesh(bellyGeo, bellyMat);
+    belly.position.z = 0.5;
+    group.add(belly);
+
+    // Head
+    const headGeo = new THREE.SphereGeometry(1, 32, 32);
+    const headMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 2;
+    group.add(head);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.2, 16, 16);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.4, 2.4, 0.7);
+    rightEye.position.set(0.4, 2.4, 0.7);
+    group.add(leftEye);
+    group.add(rightEye);
+
+    // Beak
+    const beakGeo = new THREE.ConeGeometry(0.4, 0.8, 32);
+    const beakMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const beak = new THREE.Mesh(beakGeo, beakMat);
+    beak.position.set(0, 2.1, 1);
+    group.add(beak);
+
+    // Feet
+    const footGeo = new THREE.BoxGeometry(0.6, 0.2, 1);
+    const footMat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
+    const leftFoot = new THREE.Mesh(footGeo, footMat);
+    const rightFoot = new THREE.Mesh(footGeo, footMat);
+    leftFoot.position.set(-0.6, -1.5, 0.3);
+    rightFoot.position.set(0.6, -1.5, 0.3);
+    group.add(leftFoot);
+    group.add(rightFoot);
+
+    group.position.set(3, 0, -10);
+    return group;
+  }
+
+  const kiki = createKiki();
+  const genevieve = createGenevieve();
   scene.add(kiki);
-
-  const genevieve = new THREE.Mesh(geometry, materialGen);
-  genevieve.position.set(2, 0, -5);
   scene.add(genevieve);
-
-  camera.position.z = 0;
 
   const dialogueBox = document.getElementById('dialogue');
 
@@ -66,6 +163,8 @@
     "Genevieve: “I think Kiki’s smile is stuck again…”"
   ];
 
+  camera.position.z = 0;
+
   let x = 0, z = 0;
 
   document.addEventListener('keydown', (e) => {
@@ -77,19 +176,17 @@
     camera.position.x = x;
     camera.position.z = z;
 
-    // Simple "look at" detection
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
 
-    // Raycast forward
     const raycaster = new THREE.Raycaster(camera.position, dir);
     const intersects = raycaster.intersectObjects([kiki, genevieve]);
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
-      if (obj === kiki) {
+      if (obj.parent === kiki) {
         dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
-      } else if (obj === genevieve) {
+      } else if (obj.parent === genevieve) {
         dialogueBox.textContent = genLines[Math.floor(Math.random() * genLines.length)];
       }
     } else {
@@ -104,7 +201,7 @@
   animate();
 
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
