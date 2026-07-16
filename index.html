@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Kiki's PlayPlace</title>
+  <title>Kiki's PlayPlace – Line Horror</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; }
     #dialogue {
@@ -11,20 +11,20 @@
       width: 100%;
       background: rgba(0,0,0,0.7);
       padding: 10px;
-      font-size: 18px;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-<div id="dialogue">Use WASD to move. Look at Kiki or Vivi.</div>
+<div id="dialogue">WASD to move. Mouse to look. Don’t stay in the tunnels.</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
 <script>
-  // Scene setup
+  // Scene
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x050505);
-  scene.fog = new THREE.Fog(0x110000, 5, 50);
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.Fog(0x220000, 5, 60);
 
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -34,82 +34,110 @@
   );
   camera.position.set(0, 1.5, 0);
 
-  const renderer = new THREE.WebGLRenderer();
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+  // Lights
+  const ambient = new THREE.AmbientLight(0xff0000, 0.2);
   scene.add(ambient);
 
-  // Horror red light
-  const horrorLight = new THREE.PointLight(0xff0000, 2, 20);
-  horrorLight.position.set(0, 5, -15);
+  const horrorLight = new THREE.PointLight(0xff0000, 3, 40);
+  horrorLight.position.set(0, 5, -20);
   scene.add(horrorLight);
 
   setInterval(() => {
-    horrorLight.intensity = 0.5 + Math.random() * 2.5;
-  }, 80);
+    horrorLight.intensity = 1 + Math.random() * 3;
+  }, 90);
 
-  // Floor
-  const floorGeo = new THREE.PlaneGeometry(100, 100);
-  const floorMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
+  // Helper: line box
+  function makeLineBox(w, h, d, color = 0xff0000) {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const edges = new THREE.EdgesGeometry(geo);
+    const mat = new THREE.LineBasicMaterial({ color });
+    return new THREE.LineSegments(edges, mat);
+  }
 
-  // KIKI (frog animatronic)
+  // Floor (line grid)
+  const floorLines = new THREE.Group();
+  for (let x = -50; x <= 50; x += 5) {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, 0, -50),
+      new THREE.Vector3(x, 0, 50)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color: 0x330000 });
+    floorLines.add(new THREE.Line(geo, mat));
+  }
+  for (let z = -50; z <= 50; z += 5) {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-50, 0, z),
+      new THREE.Vector3(50, 0, z)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color: 0x330000 });
+    floorLines.add(new THREE.Line(geo, mat));
+  }
+  scene.add(floorLines);
+
+  // Tunnels (line maze)
+  const tunnels = new THREE.Group();
+
+  function addTunnelSegment(x, z, length, rotation = 0) {
+    const seg = makeLineBox(6, 4, length, 0xff0000);
+    seg.position.set(x, 2, z);
+    seg.rotation.y = rotation;
+    tunnels.add(seg);
+  }
+
+  // Simple maze layout
+  addTunnelSegment(0, -15, 20);
+  addTunnelSegment(-10, -25, 20, Math.PI / 2);
+  addTunnelSegment(10, -25, 20, Math.PI / 2);
+  addTunnelSegment(0, -35, 20);
+  addTunnelSegment(0, -55, 20);
+  addTunnelSegment(-10, -45, 20, Math.PI / 2);
+  addTunnelSegment(10, -45, 20, Math.PI / 2);
+
+  scene.add(tunnels);
+
+  // Kiki (wireframe frog)
   function createKiki() {
     const group = new THREE.Group();
 
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 3, 1),
-      new THREE.MeshBasicMaterial({ color: 0x55ff55 })
-    );
+    function wireSphere(r, color) {
+      const geo = new THREE.SphereGeometry(r, 16, 16);
+      const edges = new THREE.EdgesGeometry(geo);
+      const mat = new THREE.LineBasicMaterial({ color });
+      return new THREE.LineSegments(edges, mat);
+    }
+
+    function wireBox(w, h, d, color) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const edges = new THREE.EdgesGeometry(geo);
+      const mat = new THREE.LineBasicMaterial({ color });
+      return new THREE.LineSegments(edges, mat);
+    }
+
+    const body = wireBox(2, 3, 1, 0xff0000);
     group.add(body);
 
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(1.2, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0x55ff55 })
-    );
+    const head = wireSphere(1.2, 0xff0000);
     head.position.y = 2.5;
     group.add(head);
 
-    const eyeGeo = new THREE.SphereGeometry(0.25, 16, 16);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.5, 3.2, 0.8);
-    rightEye.position.set(0.5, 3.2, 0.8);
-    group.add(leftEye);
-    group.add(rightEye);
+    const hat = makeLineBox(2.5, 1, 2.5, 0xff8800);
+    hat.position.y = 3.7;
+    group.add(hat);
 
-    const brim = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
-    );
-    brim.position.y = 3.7;
-    group.add(brim);
-
-    const hatTop = new THREE.Mesh(
-      new THREE.ConeGeometry(1, 1, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
-    );
-    hatTop.position.y = 4.2;
-    group.add(hatTop);
-
-    const taco = new THREE.Mesh(
-      new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI),
-      new THREE.MeshBasicMaterial({ color: 0xffaa33 })
-    );
+    const taco = wireSphere(0.7, 0xffaa33);
     taco.position.set(0, 1, 1.2);
     group.add(taco);
 
-    group.position.set(-3, 0, -10);
+    group.position.set(-4, 0, -18);
     return group;
   }
 
-  // VIVI (Genevieve the penguin)
-  function createVivi() {
+  // Genevieve (penguin, solid but simple)
+  function createGenevieve() {
     const group = new THREE.Group();
 
     const body = new THREE.Mesh(
@@ -155,93 +183,134 @@
     leftFoot.position.set(-0.6, -1.5, 0.3);
     rightFoot.position.set(0.6, -1.5, 0.3);
     group.add(leftFoot);
-    group.add(rightFoot);
 
-    group.position.set(3, 0, -10);
+    group.position.set(4, 0, -18);
     return group;
   }
 
   const kiki = createKiki();
-  const vivi = createVivi();
+  const genevieve = createGenevieve();
   scene.add(kiki);
-  scene.add(vivi);
-
-  // Ominous tunnel
-  const tunnelGeo = new THREE.BoxGeometry(20, 5, 60);
-  const tunnelMat = new THREE.MeshBasicMaterial({ color: 0x220000 });
-  const tunnel = new THREE.Mesh(tunnelGeo, tunnelMat);
-  tunnel.position.set(0, 0, -40);
-  scene.add(tunnel);
+  scene.add(genevieve);
 
   const dialogueBox = document.getElementById('dialogue');
 
   const kikiLines = [
-    "Kiki: “Ribbit… my taco is still smiling at you.”",
-    "Kiki: “Don’t stay in the tunnels too long…”",
-    "Kiki: “Vivi says the lights flicker for a reason.”"
+    "Kiki: “Ribbit… the tunnels like you.”",
+    "Kiki: “Don’t stop walking. The lines get closer.”",
+    "Kiki: “The red light means we’re awake.”"
   ];
 
-  const viviLines = [
-    "Genevieve: “Waddle-waddle… something’s wrong in the tunnels.”",
-    "Genevieve: “Sweetheart… don’t turn around if you hear giggling.”",
-    "Genevieve: “Only Kiki calls me Vivi.”"
+  const genevieveLines = [
+    "Genevieve: “Sweetheart… you shouldn’t be in the tunnels.”",
+    "Genevieve: “The walls remember more than you do.”",
+    "Genevieve: “If the lines move, don’t look back.”"
   ];
 
-  let x = 0, z = 0;
+  // Movement
+  let velX = 0, velZ = 0;
+  const keys = {};
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'w') z -= 0.2;
-    if (e.key === 's') z += 0.2;
-    if (e.key === 'a') x -= 0.2;
-    if (e.key === 'd') x += 0.2;
+  document.addEventListener('keydown', e => { keys[e.key] = true; });
+  document.addEventListener('keyup', e => { keys[e.key] = false; });
 
-    camera.position.x = x;
-    camera.position.z = z;
+  // Mouse look
+  let yaw = 0, pitch = 0;
+  let pointerLocked = false;
 
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-
-    const raycaster = new THREE.Raycaster(camera.position, dir);
-    const intersects = raycaster.intersectObjects([kiki, vivi], true);
-
-    if (intersects.length > 0) {
-      const obj = intersects[0].object.parent;
-      if (obj === kiki) {
-        dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
-      } else if (obj === vivi) {
-        dialogueBox.textContent = viviLines[Math.floor(Math.random() * viviLines.length)];
-      }
-    } else {
-      dialogueBox.textContent = "Use WASD to move. Look at Kiki or Genevieve.";
+  document.body.addEventListener('click', () => {
+    if (!pointerLocked && renderer.domElement.requestPointerLock) {
+      renderer.domElement.requestPointerLock();
     }
   });
 
-  // Corrupt material helper
-  function corruptMaterial(color) {
-    return new THREE.MeshBasicMaterial({
-      color,
-      wireframe: true,
-      transparent: true,
-      opacity: 0.6
-    });
-  }
-
-  // Corrupt Kiki slightly
-  kiki.children.forEach(part => {
-    part.material = corruptMaterial(0x880000);
+  document.addEventListener('pointerlockchange', () => {
+    pointerLocked = (document.pointerLockElement === renderer.domElement);
   });
 
-  // Mascot stare behavior
+  document.addEventListener('mousemove', e => {
+    if (!pointerLocked) return;
+    yaw -= e.movementX * 0.002;
+    pitch -= e.movementY * 0.002;
+    pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+  });
+
+  function updateCameraDirection() {
+    const dir = new THREE.Vector3(
+      Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      Math.cos(yaw) * Math.cos(pitch)
+    );
+    camera.lookAt(camera.position.clone().add(dir));
+    return dir;
+  }
+
+  // Mascot stare
   function makeStare(target, speed = 0.02) {
     target.lookAt(camera.position);
     target.rotation.y += speed;
   }
 
+  // Raycast for dialogue
+  const raycaster = new THREE.Raycaster();
+
+  function checkLookAtMascots() {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    raycaster.set(camera.position, dir);
+    const intersects = raycaster.intersectObjects([kiki, genevieve], true);
+
+    if (intersects.length > 0) {
+      const root = intersects[0].object;
+      let parent = root;
+      while (parent.parent && parent.parent !== scene) parent = parent.parent;
+
+      if (parent === kiki) {
+        dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
+      } else if (parent === genevieve) {
+        dialogueBox.textContent = genevieveLines[Math.floor(Math.random() * genevieveLines.length)];
+      }
+    } else {
+      dialogueBox.textContent = "WASD to move. Mouse to look. The tunnels don’t like you standing still.";
+    }
+  }
+
+  // Animate
   function animate() {
     requestAnimationFrame(animate);
 
+    const dir = updateCameraDirection();
+
+    const forward = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+    velX = 0;
+    velZ = 0;
+
+    if (keys['w']) {
+      velX += forward.x * 0.1;
+      velZ += forward.z * 0.1;
+    }
+    if (keys['s']) {
+      velX -= forward.x * 0.1;
+      velZ -= forward.z * 0.1;
+    }
+    if (keys['a']) {
+      velX -= right.x * 0.1;
+      velZ -= right.z * 0.1;
+    }
+    if (keys['d']) {
+      velX += right.x * 0.1;
+      velZ += right.z * 0.1;
+    }
+
+    camera.position.x += velX;
+    camera.position.z += velZ;
+
     makeStare(kiki);
-    makeStare(vivi);
+    makeStare(genevieve);
+
+    checkLookAtMascots();
 
     renderer.render(scene, camera);
   }
