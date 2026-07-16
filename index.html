@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Kiki's PlayPlace – Line Horror</title>
+  <title>Kiki's PlayPlace – Office Start</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; }
     #dialogue {
@@ -16,15 +16,14 @@
   </style>
 </head>
 <body>
-<div id="dialogue">WASD to move. Mouse to look. Don’t stay in the tunnels.</div>
+<div id="dialogue">You’re in the office. WASD to move, mouse to look.</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
 <script>
-  // Scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
-  scene.fog = new THREE.Fog(0x220000, 5, 60);
+  scene.fog = new THREE.Fog(0x000000, 5, 80);
 
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -32,118 +31,187 @@
     0.1,
     1000
   );
-  camera.position.set(0, 1.5, 0);
+  camera.position.set(0, 1.5, 5);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Lights
-  const ambient = new THREE.AmbientLight(0xff0000, 0.2);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambient);
 
-  const horrorLight = new THREE.PointLight(0xff0000, 3, 40);
-  horrorLight.position.set(0, 5, -20);
+  const officeLight = new THREE.PointLight(0xffffaa, 1.5, 30);
+  officeLight.position.set(0, 4, 0);
+  scene.add(officeLight);
+
+  const horrorLight = new THREE.PointLight(0xff0000, 2.5, 40);
+  horrorLight.position.set(0, 4, -25);
   scene.add(horrorLight);
 
   setInterval(() => {
-    horrorLight.intensity = 1 + Math.random() * 3;
-  }, 90);
+    horrorLight.intensity = 1 + Math.random() * 2;
+  }, 120);
 
-  // Helper: line box
-  function makeLineBox(w, h, d, color = 0xff0000) {
+  // OFFICE (start room)
+  function makeOffice() {
+    const group = new THREE.Group();
+
+    function wall(w, h, color) {
+      const geo = new THREE.BoxGeometry(w, h, 0.2);
+      const mat = new THREE.MeshBasicMaterial({ color });
+      return new THREE.Mesh(geo, mat);
+    }
+
+    const floorGeo = new THREE.PlaneGeometry(12, 12);
+    const floorMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    group.add(floor);
+
+    const backWall = wall(12, 4, 0x333366);
+    backWall.position.set(0, 2, -6);
+    group.add(backWall);
+
+    const leftWall = wall(12, 4, 0x333333);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.set(-6, 2, 0);
+    group.add(leftWall);
+
+    const rightWall = wall(12, 4, 0x333333);
+    rightWall.rotation.y = Math.PI / 2;
+    rightWall.position.set(6, 2, 0);
+    group.add(rightWall);
+
+    const deskGeo = new THREE.BoxGeometry(4, 0.5, 2);
+    const deskMat = new THREE.MeshBasicMaterial({ color: 0x553322 });
+    const desk = new THREE.Mesh(deskGeo, deskMat);
+    desk.position.set(0, 1, 2);
+    group.add(desk);
+
+    const monitorGeo = new THREE.BoxGeometry(1.5, 1, 0.1);
+    const monitorMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const monitor = new THREE.Mesh(monitorGeo, monitorMat);
+    monitor.position.set(0, 2, 1.2);
+    group.add(monitor);
+
+    group.position.set(0, 0, 0);
+    return group;
+  }
+
+  const office = makeOffice();
+  scene.add(office);
+
+  // PLAYPLACE TUNNEL ENTRANCE
+  function makeTunnelEntrance() {
+    const geo = new THREE.BoxGeometry(8, 4, 0.5);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffcc33 });
+    const arch = new THREE.Mesh(geo, mat);
+    arch.position.set(0, 2, -8);
+    return arch;
+  }
+
+  const tunnelEntrance = makeTunnelEntrance();
+  scene.add(tunnelEntrance);
+
+  // LINE-STYLE TUNNELS (colourful, PlayPlace-coded)
+  const tunnels = new THREE.Group();
+
+  function lineBox(w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const edges = new THREE.EdgesGeometry(geo);
     const mat = new THREE.LineBasicMaterial({ color });
     return new THREE.LineSegments(edges, mat);
   }
 
-  // Floor (line grid)
-  const floorLines = new THREE.Group();
-  for (let x = -50; x <= 50; x += 5) {
-    const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x, 0, -50),
-      new THREE.Vector3(x, 0, 50)
-    ]);
-    const mat = new THREE.LineBasicMaterial({ color: 0x330000 });
-    floorLines.add(new THREE.Line(geo, mat));
-  }
-  for (let z = -50; z <= 50; z += 5) {
-    const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-50, 0, z),
-      new THREE.Vector3(50, 0, z)
-    ]);
-    const mat = new THREE.LineBasicMaterial({ color: 0x330000 });
-    floorLines.add(new THREE.Line(geo, mat));
-  }
-  scene.add(floorLines);
-
-  // Tunnels (line maze)
-  const tunnels = new THREE.Group();
-
-  function addTunnelSegment(x, z, length, rotation = 0) {
-    const seg = makeLineBox(6, 4, length, 0xff0000);
+  function addTunnelSegment(x, z, length, rotation, color) {
+    const seg = lineBox(6, 4, length, color);
     seg.position.set(x, 2, z);
     seg.rotation.y = rotation;
     tunnels.add(seg);
   }
 
-  // Simple maze layout
-  addTunnelSegment(0, -15, 20);
-  addTunnelSegment(-10, -25, 20, Math.PI / 2);
-  addTunnelSegment(10, -25, 20, Math.PI / 2);
-  addTunnelSegment(0, -35, 20);
-  addTunnelSegment(0, -55, 20);
-  addTunnelSegment(-10, -45, 20, Math.PI / 2);
-  addTunnelSegment(10, -45, 20, Math.PI / 2);
+  addTunnelSegment(0, -18, 20, 0, 0xffcc33);   // yellow
+  addTunnelSegment(-10, -28, 20, Math.PI / 2, 0x33aaff); // blue
+  addTunnelSegment(10, -28, 20, Math.PI / 2, 0xff66aa);  // pink
+  addTunnelSegment(0, -38, 20, 0, 0x66ff66);   // green
+  addTunnelSegment(0, -58, 20, 0, 0xffcc33);   // yellow again
 
   scene.add(tunnels);
 
-  // Kiki (wireframe frog)
+  // KIKI – animatronic frog with seams, NO gore
   function createKiki() {
     const group = new THREE.Group();
 
-    function wireSphere(r, color) {
-      const geo = new THREE.SphereGeometry(r, 16, 16);
-      const edges = new THREE.EdgesGeometry(geo);
-      const mat = new THREE.LineBasicMaterial({ color });
-      return new THREE.LineSegments(edges, mat);
-    }
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x4bd35a });
+    const seamMat = new THREE.MeshBasicMaterial({ color: 0x1f7a2f });
 
-    function wireBox(w, h, d, color) {
-      const geo = new THREE.BoxGeometry(w, h, d);
-      const edges = new THREE.EdgesGeometry(geo);
-      const mat = new THREE.LineBasicMaterial({ color });
-      return new THREE.LineSegments(edges, mat);
-    }
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.4, 1.2), bodyMat);
+    group.add(torso);
 
-    const body = wireBox(2, 3, 1, 0xff0000);
-    group.add(body);
+    const torsoSeam = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.05, 1.25), seamMat);
+    torsoSeam.position.y = 0.4;
+    group.add(torsoSeam);
 
-    const head = wireSphere(1.2, 0xff0000);
-    head.position.y = 2.5;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 32), bodyMat);
+    head.position.y = 2.3;
     group.add(head);
 
-    const hat = makeLineBox(2.5, 1, 2.5, 0xff8800);
-    hat.position.y = 3.7;
-    group.add(hat);
+    const headSeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.8, 1.6), seamMat);
+    headSeam.position.set(0, 2.3, 0);
+    group.add(headSeam);
 
-    const taco = wireSphere(0.7, 0xffaa33);
-    taco.position.set(0, 1, 1.2);
+    const eyeWhiteGeo = new THREE.SphereGeometry(0.25, 16, 16);
+    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+    const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+    const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+    leftEyeWhite.position.set(-0.4, 2.7, 0.7);
+    rightEyeWhite.position.set(0.4, 2.7, 0.7);
+    group.add(leftEyeWhite);
+    group.add(rightEyeWhite);
+
+    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    leftPupil.position.set(-0.4, 2.7, 0.9);
+    rightPupil.position.set(0.4, 2.7, 0.9);
+    group.add(leftPupil);
+    group.add(rightPupil);
+
+    const hatBrim = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.4, 1.4, 0.15, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
+    hatBrim.position.y = 3.1;
+    group.add(hatBrim);
+
+    const hatTop = new THREE.Mesh(
+      new THREE.ConeGeometry(1, 1, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
+    hatTop.position.y = 3.6;
+    group.add(hatTop);
+
+    const taco = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6, 32, 32, 0, Math.PI),
+      new THREE.MeshBasicMaterial({ color: 0xffaa33 })
+    );
+    taco.position.set(0, 1.1, 1.1);
     group.add(taco);
 
-    group.position.set(-4, 0, -18);
+    group.position.set(-3, 0, -22);
     return group;
   }
 
-  // Genevieve (penguin, solid but simple)
+  // GENEVIEVE – animatronic penguin with seams + pupils
   function createGenevieve() {
     const group = new THREE.Group();
 
-    const body = new THREE.Mesh(
-      new THREE.SphereGeometry(1.5, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const seamMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), bodyMat);
     group.add(body);
 
     const belly = new THREE.Mesh(
@@ -153,24 +221,39 @@
     belly.position.z = 0.5;
     group.add(belly);
 
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    );
+    const bellySeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.8, 1.4), seamMat);
+    bellySeam.position.set(0, 0, 0.4);
+    group.add(bellySeam);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), bodyMat);
     head.position.y = 2;
     group.add(head);
 
-    const eyeGeo = new THREE.SphereGeometry(0.2, 16, 16);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.4, 2.4, 0.7);
-    rightEye.position.set(0.4, 2.4, 0.7);
-    group.add(leftEye);
-    group.add(rightEye);
+    const headSeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.6, 1.4), seamMat);
+    headSeam.position.set(0, 2, 0);
+    group.add(headSeam);
+
+    const eyeWhiteGeo = new THREE.SphereGeometry(0.2, 16, 16);
+    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilGeo = new THREE.SphereGeometry(0.1, 16, 16);
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+    const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+    const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+    leftEyeWhite.position.set(-0.35, 2.4, 0.7);
+    rightEyeWhite.position.set(0.35, 2.4, 0.7);
+    group.add(leftEyeWhite);
+    group.add(rightEyeWhite);
+
+    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    leftPupil.position.set(-0.35, 2.4, 0.9);
+    rightPupil.position.set(0.35, 2.4, 0.9);
+    group.add(leftPupil);
+    group.add(rightPupil);
 
     const beak = new THREE.Mesh(
-      new THREE.ConeGeometry(0.4, 0.8, 32),
+      new THREE.ConeGeometry(0.4, 0.8, 24),
       new THREE.MeshBasicMaterial({ color: 0xffaa00 })
     );
     beak.position.set(0, 2.1, 1);
@@ -183,8 +266,9 @@
     leftFoot.position.set(-0.6, -1.5, 0.3);
     rightFoot.position.set(0.6, -1.5, 0.3);
     group.add(leftFoot);
+    group.add(rightFoot);
 
-    group.position.set(4, 0, -18);
+    group.position.set(3, 0, -22);
     return group;
   }
 
@@ -196,27 +280,24 @@
   const dialogueBox = document.getElementById('dialogue');
 
   const kikiLines = [
-    "Kiki: “Ribbit… the tunnels like you.”",
-    "Kiki: “Don’t stop walking. The lines get closer.”",
-    "Kiki: “The red light means we’re awake.”"
+    "Kiki: “Ribbit… office feels safer, doesn’t it?”",
+    "Kiki: “You’re not supposed to see the tunnels yet.”",
+    "Kiki: “If the lights flicker, don’t stop moving.”"
   ];
 
   const genevieveLines = [
-    "Genevieve: “Sweetheart… you shouldn’t be in the tunnels.”",
-    "Genevieve: “The walls remember more than you do.”",
-    "Genevieve: “If the lines move, don’t look back.”"
+    "Genevieve: “Sweetheart… the office doesn’t keep you safe forever.”",
+    "Genevieve: “The PlayPlace opens when you’re ready or when it’s ready.”",
+    "Genevieve: “Don’t stare at us too long.”"
   ];
 
-  // Movement
-  let velX = 0, velZ = 0;
+  // Movement + mouse look
+  let yaw = 0, pitch = 0;
+  let pointerLocked = false;
   const keys = {};
 
   document.addEventListener('keydown', e => { keys[e.key] = true; });
   document.addEventListener('keyup', e => { keys[e.key] = false; });
-
-  // Mouse look
-  let yaw = 0, pitch = 0;
-  let pointerLocked = false;
 
   document.body.addEventListener('click', () => {
     if (!pointerLocked && renderer.domElement.requestPointerLock) {
@@ -246,12 +327,11 @@
   }
 
   // Mascot stare
-  function makeStare(target, speed = 0.02) {
+  function makeStare(target, speed = 0.01) {
     target.lookAt(camera.position);
     target.rotation.y += speed;
   }
 
-  // Raycast for dialogue
   const raycaster = new THREE.Raycaster();
 
   function checkLookAtMascots() {
@@ -261,8 +341,7 @@
     const intersects = raycaster.intersectObjects([kiki, genevieve], true);
 
     if (intersects.length > 0) {
-      const root = intersects[0].object;
-      let parent = root;
+      let parent = intersects[0].object;
       while (parent.parent && parent.parent !== scene) parent = parent.parent;
 
       if (parent === kiki) {
@@ -271,21 +350,18 @@
         dialogueBox.textContent = genevieveLines[Math.floor(Math.random() * genevieveLines.length)];
       }
     } else {
-      dialogueBox.textContent = "WASD to move. Mouse to look. The tunnels don’t like you standing still.";
+      dialogueBox.textContent = "You’re in the office. WASD to move, mouse to look. The tunnels are waiting.";
     }
   }
 
-  // Animate
   function animate() {
     requestAnimationFrame(animate);
 
     const dir = updateCameraDirection();
-
     const forward = new THREE.Vector3(dir.x, 0, dir.z).normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
-    velX = 0;
-    velZ = 0;
+    let velX = 0, velZ = 0;
 
     if (keys['w']) {
       velX += forward.x * 0.1;
