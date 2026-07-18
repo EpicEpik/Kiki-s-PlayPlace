@@ -5,6 +5,123 @@
   <title>Kiki's PlayPlace</title>
   <style>
     body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; }
+
+    #titleScreen {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    #logo {
+      font-size: 40px;
+      padding: 20px 40px;
+      border-radius: 20px;
+      background: #ff66cc;
+      color: #fff;
+      border: 4px solid #ffffff;
+      text-shadow: 2px 2px 0 #000;
+      margin-bottom: 40px;
+    }
+
+    #chars {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .charCard {
+      width: 140px;
+      height: 180px;
+      border-radius: 20px;
+      background: #222;
+      border: 3px solid #fff;
+      position: relative;
+    }
+
+    .charFace {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #ffe0d0;
+      border: 3px solid #000;
+    }
+
+    .charCheek {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ff3333;
+      top: 45px;
+    }
+
+    .charCheek.left { left: 10px; }
+    .charCheek.right { right: 10px; }
+
+    .charBody {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 80px;
+      border-radius: 20px;
+      background: #33aa33;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 40px;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .charBody.l { background: #000; }
+
+    #playButton {
+      font-size: 28px;
+      padding: 10px 40px;
+      border-radius: 999px;
+      border: 3px solid #00ffff;
+      background: #000;
+      color: #00ffff;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    #playButton::before {
+      content: "";
+      position: absolute;
+      left: -40px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #00ffff;
+      font-size: 24px;
+      opacity: 0;
+      transition: opacity 0.1s, transform 0.1s;
+    }
+
+    #playButton:hover::before {
+      content: ">>>";
+      opacity: 1;
+      transform: translateY(-50%) translateX(-5px);
+    }
+
+    #playButton:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 10px #00ffff;
+    }
+
     #dialogue {
       position: fixed;
       bottom: 0;
@@ -12,68 +129,147 @@
       background: rgba(0,0,0,0.8);
       padding: 10px;
       font-size: 15px;
+      display: none;
     }
   </style>
 </head>
 <body>
+<div id="titleScreen">
+  <div id="logo">KIKI'S PLAY PLACE</div>
+  <div id="chars">
+    <div class="charCard">
+      <div class="charFace">
+        <div class="charCheek left"></div>
+        <div class="charCheek right"></div>
+      </div>
+      <div class="charBody l">L</div>
+    </div>
+    <div class="charCard">
+      <div class="charFace">
+        <div class="charCheek left"></div>
+        <div class="charCheek right"></div>
+      </div>
+      <div class="charBody">K</div>
+    </div>
+  </div>
+  <div id="playButton">Play</div>
+</div>
+
 <div id="dialogue">You’re sitting in the office chair. Press E to stand up.</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 
 <script>
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
-  scene.fog = new THREE.Fog(0x000000, 5, 120);
-
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.set(0, 1.4, 0.4); // sitting at desk
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
+  const titleScreen = document.getElementById('titleScreen');
   const dialogueBox = document.getElementById('dialogue');
 
-  // Lighting – warm 1975 office
-  const ambient = new THREE.AmbientLight(0xfff2c2, 0.4);
-  scene.add(ambient);
+  let scene, camera, renderer;
+  let kiki, kikiTaco, genevieve, ballpit, slide;
+  let yaw = 0, pitch = 0;
+  let pointerLocked = false;
+  const keys = {};
+  let sitting = true;
+  let kikiChasing = false;
+  let kikiTaggerMode = false;
+  let kikiTaggerTimer = 0;
+  let lastTime;
 
-  const ceilingLight = new THREE.PointLight(0xffe8aa, 1.6, 40);
-  ceilingLight.position.set(0, 3.2, 0);
-  scene.add(ceilingLight);
+  document.getElementById('playButton').addEventListener('click', () => {
+    titleScreen.style.display = 'none';
+    dialogueBox.style.display = 'block';
+    startGame();
+  });
 
-  setInterval(() => {
-    ceilingLight.intensity = 1.4 + Math.random() * 0.3;
-  }, 200);
+  function startGame() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.Fog(0x000000, 5, 120);
 
-  // OFFICE
+    camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 1.4, 0.4);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const ambient = new THREE.AmbientLight(0xfff2c2, 0.5);
+    scene.add(ambient);
+
+    const ceilingLight = new THREE.PointLight(0xffe8aa, 1.8, 40);
+    ceilingLight.position.set(0, 3.2, 0);
+    scene.add(ceilingLight);
+
+    setInterval(() => {
+      ceilingLight.intensity = 1.5 + Math.random() * 0.3;
+    }, 200);
+
+    const office = makeOffice();
+    scene.add(office);
+
+    const tunnelArch = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 3, 0.3),
+      new THREE.MeshPhongMaterial({ color: 0xffcc33, shininess: 80 })
+    );
+    tunnelArch.position.set(0, 2, 5.1);
+    scene.add(tunnelArch);
+
+    const tunnels = new THREE.Group();
+    addTunnelSegment(tunnels, 0, 15, 20, 0, 0xffcc33);
+    addTunnelSegment(tunnels, 0, 35, 20, 0, 0x33aaff);
+    scene.add(tunnels);
+
+    slide = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 0.3, 6),
+      new THREE.MeshPhongMaterial({ color: 0xff8800, shininess: 100 })
+    );
+    slide.rotation.x = -Math.PI / 8;
+    slide.position.set(0, 1.5, 30);
+    scene.add(slide);
+
+    ballpit = new THREE.Mesh(
+      new THREE.CylinderGeometry(3, 3, 1, 24),
+      new THREE.MeshPhongMaterial({ color: 0x2222aa, shininess: 80 })
+    );
+    ballpit.position.set(0, 0.5, 38);
+    scene.add(ballpit);
+
+    kiki = createKiki();
+    scene.add(kiki);
+
+    genevieve = createGenevieve();
+    scene.add(genevieve);
+
+    setupControls();
+    lastTime = performance.now();
+    animate();
+  }
+
   function makeOffice() {
     const group = new THREE.Group();
 
-    // Floor
-    const floorGeo = new THREE.PlaneGeometry(10, 10);
-    const floorMat = new THREE.MeshBasicMaterial({ color: 0x303030 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 10),
+      new THREE.MeshPhongMaterial({ color: 0x303030, shininess: 10 })
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0;
     group.add(floor);
 
-    // Walls
     const backWall = new THREE.Mesh(
       new THREE.BoxGeometry(10, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x3b2a1a })
+      new THREE.MeshPhongMaterial({ color: 0x3b2a1a, shininess: 20 })
     );
     backWall.position.set(0, 2, -5);
     group.add(backWall);
 
     const leftWall = new THREE.Mesh(
       new THREE.BoxGeometry(10, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x4a3320 })
+      new THREE.MeshPhongMaterial({ color: 0x4a3320, shininess: 20 })
     );
     leftWall.rotation.y = Math.PI / 2;
     leftWall.position.set(-5, 2, 0);
@@ -81,70 +277,65 @@
 
     const rightWall = new THREE.Mesh(
       new THREE.BoxGeometry(10, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x6b4324 })
+      new THREE.MeshPhongMaterial({ color: 0x6b4324, shininess: 20 })
     );
     rightWall.rotation.y = Math.PI / 2;
     rightWall.position.set(5, 2, 0);
     group.add(rightWall);
 
-    // Front wall with doorway gap
     const frontLeft = new THREE.Mesh(
       new THREE.BoxGeometry(3, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x5a3a22 })
+      new THREE.MeshPhongMaterial({ color: 0x5a3a22, shininess: 20 })
     );
     frontLeft.position.set(-3.5, 2, 5);
     group.add(frontLeft);
 
     const frontRight = new THREE.Mesh(
       new THREE.BoxGeometry(3, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x5a3a22 })
+      new THREE.MeshPhongMaterial({ color: 0x5a3a22, shininess: 20 })
     );
     frontRight.position.set(3.5, 2, 5);
     group.add(frontRight);
 
-    // Ceiling
     const ceiling = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 10),
-      new THREE.MeshBasicMaterial({ color: 0x77715f })
+      new THREE.MeshPhongMaterial({ color: 0x77715f, shininess: 5 })
     );
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = 4;
     group.add(ceiling);
 
-    // Desk
     const desk = new THREE.Mesh(
       new THREE.BoxGeometry(3.5, 0.7, 1.5),
-      new THREE.MeshBasicMaterial({ color: 0x4b4b4b })
+      new THREE.MeshPhongMaterial({ color: 0x4b4b4b, shininess: 60 })
     );
     desk.position.set(0, 0.9, 0.9);
     group.add(desk);
 
-    // Chair
     const chairSeat = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, 0.2, 1.2),
-      new THREE.MeshBasicMaterial({ color: 0x444444 })
+      new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 40 })
     );
     chairSeat.position.set(0, 0.6, 0.1);
     group.add(chairSeat);
 
     const chairBack = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, 1, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x444444 })
+      new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 40 })
     );
     chairBack.position.set(0, 1.1, -0.4);
     group.add(chairBack);
 
-    // CRT
     const crtBody = new THREE.Mesh(
       new THREE.BoxGeometry(1.6, 1.3, 1.4),
-      new THREE.MeshBasicMaterial({ color: 0x222222 })
+      new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 80 })
     );
     crtBody.position.set(0, 1.6, 0.4);
     group.add(crtBody);
 
     const crtHole = new THREE.Mesh(
       new THREE.BoxGeometry(1.2, 0.9, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
+      new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 10 })
     );
     crtHole.position.set(0, 1.6, 1.0);
     group.add(crtHole);
@@ -156,10 +347,9 @@
     textPlane.position.set(0, 1.6, 1.02);
     group.add(textPlane);
 
-    // Ashtray + ciggies
     const ashtray = new THREE.Mesh(
       new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16),
-      new THREE.MeshBasicMaterial({ color: 0x666666 })
+      new THREE.MeshPhongMaterial({ color: 0x666666, shininess: 80 })
     );
     ashtray.position.set(0.7, 1.25, 1.2);
     group.add(ashtray);
@@ -167,7 +357,7 @@
     function addCig(x, z, rot) {
       const cig = new THREE.Mesh(
         new THREE.CylinderGeometry(0.03, 0.03, 0.18, 8),
-        new THREE.MeshBasicMaterial({ color: 0xdddddd })
+        new THREE.MeshPhongMaterial({ color: 0xdddddd, shininess: 40 })
       );
       cig.rotation.z = Math.PI / 2;
       cig.position.set(x, 1.27, z);
@@ -181,194 +371,164 @@
     return group;
   }
 
-  const office = makeOffice();
-  scene.add(office);
-
-  // Tunnel entrance arch
-  const tunnelArch = new THREE.Mesh(
-    new THREE.BoxGeometry(4, 3, 0.3),
-    new THREE.MeshBasicMaterial({ color: 0xffcc33 })
-  );
-  tunnelArch.position.set(0, 2, 5.1);
-  scene.add(tunnelArch);
-
-  // Tunnels – solid
-  const tunnels = new THREE.Group();
-
-  function addTunnelSegment(x, z, length, rotation, color) {
+  function addTunnelSegment(group, x, z, length, rotation, color) {
     const seg = new THREE.Mesh(
       new THREE.BoxGeometry(6, 4, length),
-      new THREE.MeshBasicMaterial({ color })
+      new THREE.MeshPhongMaterial({ color, shininess: 60 })
     );
     seg.position.set(x, 2, z);
     seg.rotation.y = rotation;
-    tunnels.add(seg);
+    group.add(seg);
   }
 
-  addTunnelSegment(0, 15, 20, 0, 0xffcc33);   // main tunnel
-  addTunnelSegment(0, 35, 20, 0, 0x33aaff);   // slide area
-  scene.add(tunnels);
-
-  // Slide + ballpit
-  const slide = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 0.3, 6),
-    new THREE.MeshBasicMaterial({ color: 0xff8800 })
-  );
-  slide.rotation.x = -Math.PI / 8;
-  slide.position.set(0, 1.5, 30);
-  scene.add(slide);
-
-  const ballpit = new THREE.Mesh(
-    new THREE.CylinderGeometry(3, 3, 1, 24),
-    new THREE.MeshBasicMaterial({ color: 0x2222aa })
-  );
-  ballpit.position.set(0, 0.5, 38);
-  scene.add(ballpit);
-
-  // KIKI – child-like animatronic frog
-  let kiki, kikiTaco;
   function createKiki() {
     const group = new THREE.Group();
 
-    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x4bd35a });
-    const seamMat = new THREE.MeshBasicMaterial({ color: 0x1f7a2f });
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x4bd35a, shininess: 80 });
+    const seamMat = new THREE.MeshPhongMaterial({ color: 0x1f7a2f, shininess: 40 });
 
     const torso = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 1.0), bodyMat);
+    torso.position.y = 0.9;
     group.add(torso);
 
     const torsoSeam = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 1.05), seamMat);
-    torsoSeam.position.y = 0.2;
+    torsoSeam.position.y = 1.1;
     group.add(torsoSeam);
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), bodyMat);
-    head.position.y = 1.6;
+    head.position.y = 2.0;
     group.add(head);
 
     const headSeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.4, 1.3), seamMat);
-    headSeam.position.set(0, 1.6, 0);
+    headSeam.position.set(0, 2.0, 0);
     group.add(headSeam);
 
-    const eyeWhiteGeo = new THREE.SphereGeometry(0.22, 16, 16);
-    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const pupilGeo = new THREE.SphereGeometry(0.11, 16, 16);
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const faceMat = new THREE.MeshPhongMaterial({ color: 0xffe0d0, shininess: 60 });
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32), faceMat);
+    face.position.set(0, 2.0, 0.4);
+    group.add(face);
 
-    const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-    const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-    leftEyeWhite.position.set(-0.35, 2.0, 0.6);
-    rightEyeWhite.position.set(0.35, 2.0, 0.6);
-    group.add(leftEyeWhite);
-    group.add(rightEyeWhite);
+    const cheekMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 });
+    const leftCheek = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), cheekMat);
+    const rightCheek = leftCheek.clone();
+    leftCheek.position.set(-0.35, 1.9, 0.8);
+    rightCheek.position.set(0.35, 1.9, 0.8);
+    group.add(leftCheek, rightCheek);
 
-    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    leftPupil.position.set(-0.35, 2.0, 0.8);
-    rightPupil.position.set(0.35, 2.0, 0.8);
-    group.add(leftPupil);
-    group.add(rightPupil);
+    const eyeWhiteMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 });
+    const pupilMat = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 10 });
+    const leftEyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), eyeWhiteMat);
+    const rightEyeWhite = leftEyeWhite.clone();
+    leftEyeWhite.position.set(-0.25, 2.1, 0.9);
+    rightEyeWhite.position.set(0.25, 2.1, 0.9);
+    group.add(leftEyeWhite, rightEyeWhite);
+
+    const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), pupilMat);
+    const rightPupil = leftPupil.clone();
+    leftPupil.position.set(-0.25, 2.1, 1.05);
+    rightPupil.position.set(0.25, 2.1, 1.05);
+    group.add(leftPupil, rightPupil);
 
     const hatBrim = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.2, 1.2, 0.12, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+      new THREE.CylinderGeometry(1.0, 1.0, 0.12, 24),
+      new THREE.MeshPhongMaterial({ color: 0xffcc00, shininess: 80 })
     );
-    hatBrim.position.y = 2.3;
+    hatBrim.position.y = 2.5;
     group.add(hatBrim);
 
     const hatTop = new THREE.Mesh(
-      new THREE.ConeGeometry(0.8, 0.8, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+      new THREE.ConeGeometry(0.7, 0.7, 24),
+      new THREE.MeshPhongMaterial({ color: 0xffcc00, shininess: 80 })
     );
-    hatTop.position.y = 2.7;
+    hatTop.position.y = 2.9;
     group.add(hatTop);
 
     const taco = new THREE.Mesh(
       new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI),
-      new THREE.MeshBasicMaterial({ color: 0xffaa33 })
+      new THREE.MeshPhongMaterial({ color: 0xffaa33, shininess: 80 })
     );
-    taco.position.set(0, 0.8, 0.9);
+    taco.position.set(0.5, 1.1, 0.8);
     group.add(taco);
-
     kikiTaco = taco;
 
-    // start in tunnel
     group.position.set(0, 0.5, 20);
     return group;
   }
 
-  kiki = createKiki();
-  scene.add(kiki);
-
-  // Genevieve just stands in deeper tunnel for now
   function createGenevieve() {
     const group = new THREE.Group();
 
-    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const seamMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 80 });
+    const seamMat = new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 40 });
 
     const body = new THREE.Mesh(new THREE.SphereGeometry(1.3, 32, 32), bodyMat);
+    body.position.y = 0.7;
     group.add(body);
 
     const belly = new THREE.Mesh(
       new THREE.SphereGeometry(1.0, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffffff })
+      new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 })
     );
-    belly.position.z = 0.4;
+    belly.position.set(0, 0.7, 0.4);
     group.add(belly);
 
     const bellySeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.6, 1.2), seamMat);
-    bellySeam.position.set(0, 0, 0.3);
+    bellySeam.position.set(0, 0.7, 0.3);
     group.add(bellySeam);
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 32), bodyMat);
-    head.position.y = 1.7;
+    head.position.y = 2.0;
     group.add(head);
 
     const headSeam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.4, 1.2), seamMat);
-    headSeam.position.set(0, 1.7, 0);
+    headSeam.position.set(0, 2.0, 0);
     group.add(headSeam);
 
-    const eyeWhiteGeo = new THREE.SphereGeometry(0.18, 16, 16);
-    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const pupilGeo = new THREE.SphereGeometry(0.09, 16, 16);
-    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const faceMat = new THREE.MeshPhongMaterial({ color: 0xffe0d0, shininess: 60 });
+    const face = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32), faceMat);
+    face.position.set(0, 2.0, 0.4);
+    group.add(face);
 
-    const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-    const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-    leftEyeWhite.position.set(-0.3, 2.0, 0.6);
-    rightEyeWhite.position.set(0.3, 2.0, 0.6);
-    group.add(leftEyeWhite);
-    group.add(rightEyeWhite);
+    const cheekMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 });
+    const leftCheek = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), cheekMat);
+    const rightCheek = leftCheek.clone();
+    leftCheek.position.set(-0.35, 1.9, 0.8);
+    rightCheek.position.set(0.35, 1.9, 0.8);
+    group.add(leftCheek, rightCheek);
 
-    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-    leftPupil.position.set(-0.3, 2.0, 0.8);
-    rightPupil.position.set(0.3, 2.0, 0.8);
-    group.add(leftPupil);
-    group.add(rightPupil);
+    const eyeWhiteMat = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 80 });
+    const pupilMat = new THREE.MeshPhongMaterial({ color: 0x000000, shininess: 10 });
+    const leftEyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), eyeWhiteMat);
+    const rightEyeWhite = leftEyeWhite.clone();
+    leftEyeWhite.position.set(-0.25, 2.1, 0.9);
+    rightEyeWhite.position.set(0.25, 2.1, 0.9);
+    group.add(leftEyeWhite, rightEyeWhite);
+
+    const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), pupilMat);
+    const rightPupil = leftPupil.clone();
+    leftPupil.position.set(-0.25, 2.1, 1.05);
+    rightPupil.position.set(0.25, 2.1, 1.05);
+    group.add(leftPupil, rightPupil);
 
     const beak = new THREE.Mesh(
       new THREE.ConeGeometry(0.35, 0.7, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+      new THREE.MeshPhongMaterial({ color: 0xffaa00, shininess: 80 })
     );
-    beak.position.set(0, 1.9, 0.9);
+    beak.position.set(0, 2.0, 1.0);
     group.add(beak);
 
     const leftFoot = new THREE.Mesh(
       new THREE.BoxGeometry(0.5, 0.2, 0.8),
-      new THREE.MeshBasicMaterial({ color: 0xff8800 })
+      new THREE.MeshPhongMaterial({ color: 0xff8800, shininess: 80 })
     );
     const rightFoot = leftFoot.clone();
-    leftFoot.position.set(-0.5, -1.2, 0.3);
-    rightFoot.position.set(0.5, -1.2, 0.3);
-    group.add(leftFoot);
-    group.add(rightFoot);
+    leftFoot.position.set(-0.5, 0, 0.3);
+    rightFoot.position.set(0.5, 0, 0.3);
+    group.add(leftFoot, rightFoot);
 
     group.position.set(2.5, 0, 32);
     return group;
   }
-
-  const genevieve = createGenevieve();
-  scene.add(genevieve);
 
   const kikiLines = [
     "Kiki: “Sir! The P-P-Play-Place is c-closed now!”",
@@ -383,38 +543,40 @@
     "Genevieve: “The ballpit makes us… fuzzy.”"
   ];
 
-  // Movement + mouse look
-  let yaw = 0, pitch = 0;
-  let pointerLocked = false;
-  const keys = {};
-  let sitting = true;
+  function setupControls() {
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (sitting && e.key.toLowerCase() === 'e') {
+        sitting = false;
+        dialogueBox.textContent = "You stand up. WASD to move, mouse to look. The tunnels are through the doorway.";
+        camera.position.set(0, 1.6, 0.2);
+      }
+    });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
 
-  document.addEventListener('keydown', e => {
-    keys[e.key] = true;
-    if (sitting && e.key.toLowerCase() === 'e') {
-      sitting = false;
-      dialogueBox.textContent = "You stand up. WASD to move, mouse to look. The tunnels are through the doorway.";
-      camera.position.set(0, 1.6, 0.2);
-    }
-  });
-  document.addEventListener('keyup', e => { keys[e.key] = false; });
+    document.body.addEventListener('click', () => {
+      if (!pointerLocked && renderer.domElement.requestPointerLock) {
+        renderer.domElement.requestPointerLock();
+      }
+    });
 
-  document.body.addEventListener('click', () => {
-    if (!pointerLocked && renderer.domElement.requestPointerLock) {
-      renderer.domElement.requestPointerLock();
-    }
-  });
+    document.addEventListener('pointerlockchange', () => {
+      pointerLocked = (document.pointerLockElement === renderer.domElement);
+    });
 
-  document.addEventListener('pointerlockchange', () => {
-    pointerLocked = (document.pointerLockElement === renderer.domElement);
-  });
+    document.addEventListener('mousemove', e => {
+      if (!pointerLocked) return;
+      yaw -= e.movementX * 0.002;
+      pitch -= e.movementY * 0.002;
+      pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+    });
 
-  document.addEventListener('mousemove', e => {
-    if (!pointerLocked) return;
-    yaw -= e.movementX * 0.002;
-    pitch -= e.movementY * 0.002;
-    pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
-  });
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
 
   function updateCameraDirection() {
     const dir = new THREE.Vector3(
@@ -426,13 +588,11 @@
     return dir;
   }
 
-  // Collision: office + doorway
   function applyCollision() {
     if (camera.position.z < -4.6) camera.position.z = -4.6;
     if (camera.position.x < -4.6) camera.position.x = -4.6;
     if (camera.position.x > 4.6) camera.position.x = 4.6;
 
-    // front wall with doorway gap
     if (camera.position.z > 4.6 && camera.position.z < 5) {
       if (camera.position.x < -2 || camera.position.x > 2) {
         camera.position.z = 4.6;
@@ -440,67 +600,53 @@
     }
   }
 
-  // Kiki chase logic
-  let kikiChasing = false;
-  let kikiTaggerMode = false;
-  let kikiTaggerTimer = 0;
-
   function updateKikiChase(delta) {
-    // Kiki only chases if player is in tunnels (z > ~8)
     if (camera.position.z > 8 && camera.position.z < 40) {
       if (!kikiChasing) {
         kikiChasing = true;
         dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
       }
 
-      // Sometimes she stops and goes into "I don't like being the tagger" mode
       if (!kikiTaggerMode && Math.random() < 0.002) {
         kikiTaggerMode = true;
-        kikiTaggerTimer = 3; // seconds
+        kikiTaggerTimer = 3;
         dialogueBox.textContent = kikiTaggerLine;
-        if (kikiTaco) kikiTaco.visible = false; // she drops taco (no longer holding it)
+        if (kikiTaco) kikiTaco.visible = false;
       }
 
       if (kikiTaggerMode) {
         kikiTaggerTimer -= delta;
-        // In tagger mode, she slows down and lets the "taco" be the tagger (symbolically)
-        // We just stop her movement for a bit.
         if (kikiTaggerTimer <= 0) {
           kikiTaggerMode = false;
-          if (kikiTaco) kikiTaco.visible = true; // she picks taco back up
+          if (kikiTaco) kikiTaco.visible = true;
           dialogueBox.textContent = kikiLines[Math.floor(Math.random() * kikiLines.length)];
         }
         return;
       }
 
-      // Medium child-like crawl speed
-      const target = new THREE.Vector3(camera.position.x, 0.5, camera.position.z);
+      const target = new THREE.Vector3(camera.position.x, 0.3, camera.position.z);
       const kikiPos = kiki.position.clone();
       const dir = target.sub(kikiPos).normalize();
-      const speed = 2.0; // medium speed
+      const speed = 2.0;
       kiki.position.x += dir.x * speed * delta;
       kiki.position.z += dir.z * speed * delta;
 
-      // Crawl pose: lower body
       kiki.position.y = 0.3;
       kiki.rotation.x = -Math.PI / 10;
     } else {
       kikiChasing = false;
       kikiTaggerMode = false;
       if (kikiTaco) kikiTaco.visible = true;
-      // reset pose
       kiki.position.y = 0.5;
       kiki.rotation.x = 0;
     }
   }
 
-  // Ballpit effect: balls mess with their brain (they stop chasing)
   function checkBallpit() {
     const dx = camera.position.x - ballpit.position.x;
     const dz = camera.position.z - ballpit.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
     if (dist < 2.5) {
-      // inside ballpit area
       kikiChasing = false;
       kikiTaggerMode = false;
       if (kikiTaco) kikiTaco.visible = true;
@@ -531,8 +677,6 @@
       }
     }
   }
-
-  let lastTime = performance.now();
 
   function animate() {
     requestAnimationFrame(animate);
@@ -576,13 +720,6 @@
 
     renderer.render(scene, camera);
   }
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
 </script>
 </body>
 </html>
